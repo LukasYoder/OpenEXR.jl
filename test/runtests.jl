@@ -19,6 +19,7 @@ end
 
 include("test_core_bindings.jl")
 include("test_attributes.jl")
+include("test_spectral_cube.jl")
 
 @testset "RoundTrip" begin
 

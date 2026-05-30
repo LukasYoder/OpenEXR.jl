@@ -2,6 +2,7 @@ module OpenEXR
 
 export load_exr, save_exr
 export ExrIOError
+export SpectralCube
 
 using FileIO, Colors
 
@@ -29,6 +30,7 @@ end  # module Core
 # Order matters: io.jl defines ExrIOError + _check, which attributes.jl relies on.
 include("io.jl")
 include("attributes.jl")
+include("spectral_cube.jl")
 
 const MAGIC = Cint(C.IMF_MAGIC)
 
