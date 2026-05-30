@@ -3,6 +3,7 @@ module OpenEXR
 export load_exr, save_exr
 export ExrIOError
 export SpectralCube
+export ExrFile, ExrPart
 
 using FileIO, Colors
 
@@ -31,6 +32,7 @@ end  # module Core
 include("io.jl")
 include("attributes.jl")
 include("spectral_cube.jl")
+include("exr_file.jl")
 
 const MAGIC = Cint(C.IMF_MAGIC)
 
