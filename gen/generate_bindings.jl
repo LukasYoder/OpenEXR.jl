@@ -125,3 +125,55 @@ open(core_common_file, "w") do f
     println(f, "using CEnum\n")
     print_buffer(f, dump_to_buffer(ctx_core.common_buffer))
 end
+
+# ------------------------------------------------------------
+# Post-process patch: inject the trailing anonymous union pointer field that
+# Clang.jl drops from `exr_coding_channel_info_t`. The upstream C struct ends
+# with `union { uint8_t* decode_to_ptr; const uint8_t* encode_from_ptr; }`,
+# but Clang.jl emits the struct without that union -- the resulting Julia
+# struct is 40 bytes instead of the correct 48, and there is no way to set
+# the encode source pointer or read destination pointer from Julia.
+#
+# We add a single `user_ptr::Ptr{UInt8}` field at the tail. C uses the same
+# 8-byte slot for both decode_to_ptr and encode_from_ptr (it is a union), and
+# we expose them as the same Julia field with helper accessors in the
+# high-level layer. Root-cause fix would be patching Clang.jl's anonymous-
+# union handling; this localized post-process keeps the generator output
+# correct and stable in the meantime.
+let text = read(core_common_file, String)
+    original = """mutable struct exr_coding_channel_info_t
+    channel_name::Cstring
+    height::Int32
+    width::Int32
+    x_samples::Int32
+    y_samples::Int32
+    p_linear::UInt8
+    bytes_per_element::Int8
+    data_type::UInt16
+    user_bytes_per_element::Int16
+    user_data_type::UInt16
+    user_pixel_stride::Int32
+    user_line_stride::Int32
+end"""
+    patched = """mutable struct exr_coding_channel_info_t
+    channel_name::Cstring
+    height::Int32
+    width::Int32
+    x_samples::Int32
+    y_samples::Int32
+    p_linear::UInt8
+    bytes_per_element::Int8
+    data_type::UInt16
+    user_bytes_per_element::Int16
+    user_data_type::UInt16
+    user_pixel_stride::Int32
+    user_line_stride::Int32
+    # Trailing anonymous union from the C header (decode_to_ptr / encode_from_ptr).
+    # Patched in post-process because Clang.jl drops anonymous union members.
+    user_ptr::Ptr{UInt8}
+end"""
+    occursin(original, text) ||
+        error("post-process patch failed: exr_coding_channel_info_t shape changed; \
+               regenerate this file with current Clang.jl and update the patch.")
+    write(core_common_file, replace(text, original => patched))
+end

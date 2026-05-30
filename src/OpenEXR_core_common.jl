@@ -428,6 +428,9 @@ mutable struct exr_coding_channel_info_t
     user_data_type::UInt16
     user_pixel_stride::Int32
     user_line_stride::Int32
+    # Trailing anonymous union from the C header (decode_to_ptr / encode_from_ptr).
+    # Patched in post-process because Clang.jl drops anonymous union members.
+    user_ptr::Ptr{UInt8}
 end
 
 mutable struct _exr_encode_pipeline

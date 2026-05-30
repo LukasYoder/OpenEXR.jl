@@ -1,6 +1,7 @@
 module OpenEXR
 
 export load_exr, save_exr
+export ExrIOError
 
 using FileIO, Colors
 
@@ -23,6 +24,11 @@ using OpenEXR_jll
 include("OpenEXR_core_common.jl")
 include("OpenEXR_core_api.jl")
 end  # module Core
+
+# High-level layer (hand-written, idiomatic Julia -- no ccalls).
+# Order matters: io.jl defines ExrIOError + _check, which attributes.jl relies on.
+include("io.jl")
+include("attributes.jl")
 
 const MAGIC = Cint(C.IMF_MAGIC)
 
