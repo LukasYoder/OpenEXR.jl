@@ -1,7 +1,6 @@
 # Automatically generated using Clang.jl
+using CEnum
 
-
-const EXR_EXPORT = OPENEXR_EXPORT
 
 # Skipping MacroDefinition: EXR_PRINTF_FUNC_ATTRIBUTE __attribute__ ( ( format ( printf , 3 , 4 ) ) )
 

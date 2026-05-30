@@ -108,9 +108,20 @@ for trans_unit in ctx_core.trans_units
 end
 close(core_api_stream)
 
-# Write Core common file
+# Remove EXR_EXPORT -- it is a C visibility-attribute macro (defined as
+# `#define EXR_EXPORT OPENEXR_EXPORT` in openexr_conf.h), not a value. Clang.jl
+# translates the #define into `const EXR_EXPORT = OPENEXR_EXPORT`, which then
+# fails to load because `OPENEXR_EXPORT` itself is a stripped C macro with no
+# Julia counterpart. The symbol has no meaningful translation in Julia and is
+# never referenced by any auto-generated function signature.
+haskey(ctx_core.common_buffer, :EXR_EXPORT) && pop!(ctx_core.common_buffer, :EXR_EXPORT)
+
+# Write Core common file. The Core headers use C enums (which Clang.jl emits via
+# CEnum.jl's `@cenum` macro), so prepend `using CEnum` so the file loads. The
+# legacy ImfCRgbaFile.h headers contain only `#define`s and need no such import.
 core_common_file = joinpath(@__DIR__, "..", "src", "OpenEXR_core_common.jl")
 open(core_common_file, "w") do f
-    println(f, "# Automatically generated using Clang.jl\n")
+    println(f, "# Automatically generated using Clang.jl")
+    println(f, "using CEnum\n")
     print_buffer(f, dump_to_buffer(ctx_core.common_buffer))
 end

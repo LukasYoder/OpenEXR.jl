@@ -17,6 +17,8 @@ function channelwise_max_diff(a::Gray, b::Gray)
     abs(a.val - b.val)
 end
 
+include("test_core_bindings.jl")
+
 @testset "RoundTrip" begin
 
     @testset "Identical" begin
