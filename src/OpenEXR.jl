@@ -1,3 +1,28 @@
+"""
+    OpenEXR
+
+Read and write OpenEXR image files. Supports three I/O shapes:
+
+- **Colors-typed images** (`Array{<:Color, 2}`) — the existing API for
+  RGB / RGBA / Gray / GrayA photographs.
+- **`SpectralCube`** — first-class type for hyperspectral, multispectral,
+  and ultraspectral data with per-band wavelengths.
+- **`ExrFile`** — catch-all for arbitrary EXR files (renderer outputs,
+  multi-part files, Cryptomatte mattes, custom channel sets).
+
+Read: `load(path)` auto-detects the file's shape and returns the most
+specific type. Pass a type as the second argument to assert the shape:
+`load(path, SpectralCube)`, `load(path, ExrFile)`.
+
+Write: `save(path, value)` dispatches on `typeof(value)` — Colors arrays,
+`SpectralCube`s, and `ExrFile`s all use the same verb. Use
+`save(path; channels=..., attributes=..., ...)` as a kwarg-only escape
+hatch for writing arbitrary single-part files without constructing a
+struct first.
+
+See the package README for the on-disk EXR conventions and a comparison
+table of the three shapes.
+"""
 module OpenEXR
 
 export load_exr, save_exr
