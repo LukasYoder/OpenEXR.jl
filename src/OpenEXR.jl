@@ -167,11 +167,14 @@ function save_exr(
 end
 
 """
-    load(filename)::Array{[RGB|RGBA|Gray|GrayA]{Float16},2}
+    _legacy_load_colors(filename)::Array{[RGB|RGBA|Gray|GrayA]{Float16},2}
 
-Returns the image data contained in `filename`.
+Internal: the pre-redesign `load(::AbstractString)` body, preserved
+byte-for-byte. Called by the new auto-detecting `load(path)` (in
+`src/io.jl`) whenever `_detect_shape(path) === :colors`, and by the
+type-asserted `load(path, Array{C, 2})` variant. Not exported.
 """
-function load(filename::AbstractString)
+function _legacy_load_colors(filename::AbstractString)
     (rgba, chans) = load_exr(filename)
     if chans == WRITE_YA
         return (c -> convert(GrayA{Float16}, c)).(rgba)

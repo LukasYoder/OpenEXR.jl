@@ -21,6 +21,8 @@ include("test_core_bindings.jl")
 include("test_attributes.jl")
 include("test_spectral_cube.jl")
 include("test_exr_file.jl")
+include("test_io.jl")
+include("test_legacy_unchanged.jl")
 
 @testset "RoundTrip" begin
 
