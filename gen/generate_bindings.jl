@@ -63,3 +63,54 @@ open(common_file, "w") do f
     println(f, "# Automatically generated using Clang.jl\n")
     print_buffer(f, dump_to_buffer(ctx.common_buffer))
 end
+
+# ============================================================
+# Core C API (libOpenEXRCore) — modern arbitrary-channel I/O
+# ============================================================
+
+const OPENEXR_CORE_HEADERS = [joinpath(OPENEXR_INCLUDE, "openexr.h")]
+
+ctx_core = DefaultContext()
+
+parse_headers!(ctx_core, OPENEXR_CORE_HEADERS,
+               args=["-I", joinpath(OPENEXR_INCLUDE, "..")],
+               includes=vcat(OPENEXR_INCLUDE, CLANG_INCLUDE),
+               )
+
+ctx_core.libname = "libOpenEXRCore"
+ctx_core.options["is_function_strictly_typed"] = false
+ctx_core.options["is_struct_mutable"] = true  # mutable so pipe_size etc. can be set
+
+core_api_file = joinpath(@__DIR__, "..", "src", "OpenEXR_core_api.jl")
+core_api_stream = open(core_api_file, "w")
+
+for trans_unit in ctx_core.trans_units
+    root_cursor = getcursor(trans_unit)
+    push!(ctx_core.cursor_stack, root_cursor)
+    header = spelling(root_cursor)
+    @info "wrapping header: $header ..."
+    ctx_core.children = children(root_cursor)
+    for (i, child) in enumerate(ctx_core.children)
+        child_name = name(child)
+        child_header = filename(child)
+        ctx_core.children_index = i
+        startswith(child_name, "__") && continue
+        child_name in keys(ctx_core.common_buffer) && continue
+        # Accept symbols from any openexr_*.h header (umbrella header pulls them in).
+        startswith(basename(child_header), "openexr") || continue
+        wrap!(ctx_core, child)
+    end
+    @info "writing $(core_api_file)"
+    println(core_api_stream, "# Julia wrapper for header: $(basename(header))")
+    println(core_api_stream, "# Automatically generated using Clang.jl\n")
+    print_buffer(core_api_stream, ctx_core.api_buffer)
+    empty!(ctx_core.api_buffer)
+end
+close(core_api_stream)
+
+# Write Core common file
+core_common_file = joinpath(@__DIR__, "..", "src", "OpenEXR_core_common.jl")
+open(core_common_file, "w") do f
+    println(f, "# Automatically generated using Clang.jl\n")
+    print_buffer(f, dump_to_buffer(ctx_core.common_buffer))
+end
