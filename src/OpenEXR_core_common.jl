@@ -433,6 +433,9 @@ mutable struct exr_coding_channel_info_t
     user_ptr::Ptr{UInt8}
 end
 
+const _exr_chunk_info_storage_t = NTuple{sizeof(exr_chunk_info_t), UInt8}
+const _exr_quick_channel_store_t = NTuple{5 * sizeof(exr_coding_channel_info_t), UInt8}
+
 mutable struct _exr_encode_pipeline
     pipe_size::Csize_t
     channels::Ptr{exr_coding_channel_info_t}
@@ -440,7 +443,7 @@ mutable struct _exr_encode_pipeline
     encode_flags::UInt16
     part_index::Cint
     context::exr_const_context_t
-    chunk::exr_chunk_info_t
+    chunk::_exr_chunk_info_storage_t
     encoding_user_data::Ptr{Cvoid}
     packed_buffer::Ptr{Cvoid}
     packed_bytes::UInt64
@@ -463,7 +466,7 @@ mutable struct _exr_encode_pipeline
     compress_fn::Ptr{Cvoid}
     yield_until_ready_fn::Ptr{Cvoid}
     write_fn::Ptr{Cvoid}
-    _quick_chan_store::NTuple{5, exr_coding_channel_info_t}
+    _quick_chan_store::_exr_quick_channel_store_t
 end
 
 const exr_encode_pipeline_t = _exr_encode_pipeline
@@ -475,7 +478,7 @@ mutable struct _exr_decode_pipeline
     decode_flags::UInt16
     part_index::Cint
     context::exr_const_context_t
-    chunk::exr_chunk_info_t
+    chunk::_exr_chunk_info_storage_t
     user_line_begin_skip::Int32
     user_line_end_ignore::Int32
     bytes_decompressed::UInt64
@@ -498,7 +501,7 @@ mutable struct _exr_decode_pipeline
     decompress_fn::Ptr{Cvoid}
     realloc_nonimage_data_fn::Ptr{Cvoid}
     unpack_and_convert_fn::Ptr{Cvoid}
-    _quick_chan_store::NTuple{5, exr_coding_channel_info_t}
+    _quick_chan_store::_exr_quick_channel_store_t
 end
 
 const exr_decode_pipeline_t = _exr_decode_pipeline

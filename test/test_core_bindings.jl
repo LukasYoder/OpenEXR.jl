@@ -36,6 +36,44 @@ using OpenEXR
         @test fieldname(OpenEXR.Core.exr_decode_pipeline_t, 1) == :pipe_size
     end
 
+    @testset "pipeline structs reserve C inline storage" begin
+        encode_pipeline = OpenEXR.Core.exr_encode_pipeline_t
+        decode_pipeline = OpenEXR.Core.exr_decode_pipeline_t
+
+        @test fieldname(encode_pipeline, 2) == :channels
+        @test fieldname(encode_pipeline, 3) == :channel_count
+        @test fieldname(encode_pipeline, 7) == :chunk
+        @test fieldname(encode_pipeline, 30) == :_quick_chan_store
+        @test fieldname(decode_pipeline, 2) == :channels
+        @test fieldname(decode_pipeline, 3) == :channel_count
+        @test fieldname(decode_pipeline, 7) == :chunk
+        @test fieldname(decode_pipeline, 30) == :_quick_chan_store
+
+        @test fieldoffset(encode_pipeline, 2) == sizeof(Csize_t)
+        @test fieldoffset(decode_pipeline, 2) == sizeof(Csize_t)
+        @test fieldoffset(encode_pipeline, 3) ==
+              sizeof(Csize_t) + sizeof(Ptr{OpenEXR.Core.exr_coding_channel_info_t})
+        @test fieldoffset(decode_pipeline, 3) ==
+              sizeof(Csize_t) + sizeof(Ptr{OpenEXR.Core.exr_coding_channel_info_t})
+
+        chunk_bytes = sizeof(OpenEXR.Core.exr_chunk_info_t)
+        channel_bytes = sizeof(OpenEXR.Core.exr_coding_channel_info_t)
+
+        encode_chunk_span = fieldoffset(encode_pipeline, 8) -
+            fieldoffset(encode_pipeline, 7)
+        decode_chunk_span = fieldoffset(decode_pipeline, 8) -
+            fieldoffset(decode_pipeline, 7)
+        encode_quick_span = sizeof(encode_pipeline) -
+            fieldoffset(encode_pipeline, 30)
+        decode_quick_span = sizeof(decode_pipeline) -
+            fieldoffset(decode_pipeline, 30)
+
+        @test encode_chunk_span == chunk_bytes
+        @test decode_chunk_span == chunk_bytes
+        @test encode_quick_span == 5 * channel_bytes
+        @test decode_quick_span == 5 * channel_bytes
+    end
+
     @testset "pixel-type constants exist" begin
         # @cenum exports EXR_PIXEL_UINT/HALF/FLOAT at the module level.
         @test isdefined(OpenEXR.Core, :EXR_PIXEL_UINT)

@@ -177,3 +177,63 @@ end"""
                regenerate this file with current Clang.jl and update the patch.")
     write(core_common_file, replace(text, original => patched))
 end
+
+# Post-process patch: Clang.jl emits nested mutable struct fields in the
+# versioned encode/decode pipeline structs. Julia stores mutable struct fields
+# as object references when they are embedded in another Julia struct, but the
+# OpenEXRCore C layout stores `exr_chunk_info_t chunk` and
+# `exr_coding_channel_info_t _quick_chan_store[5]` inline. If these regions are
+# left as nested mutable fields, `sizeof(exr_encode_pipeline_t)` and
+# `sizeof(exr_decode_pipeline_t)` are too small, and OpenEXRCore writes past the
+# Julia buffer during `exr_encoding_initialize` / `exr_decoding_initialize`.
+#
+# The high-level code never reads the embedded `chunk` or quick channel store
+# through the pipeline object; it only reads scalar fields such as `channels`
+# and `channel_count`. Represent those C-only inline regions as raw byte tuples
+# so Julia reserves the correct storage while preserving the fields we use.
+let text = read(core_common_file, String)
+    function replace_exactly(text, old, new, expected_count, label)
+        count = 0
+        position = firstindex(text)
+        while true
+            range = findnext(old, text, position)
+            range === nothing && break
+            count += 1
+            position = nextind(text, last(range))
+        end
+        count == expected_count ||
+            error("post-process patch failed: expected $expected_count $label \
+                   replacement(s), found $count; regenerate this file with \
+                   current Clang.jl and update the patch.")
+        return replace(text, old => new)
+    end
+
+    original = """end
+
+mutable struct _exr_encode_pipeline"""
+    patched = """end
+
+const _exr_chunk_info_storage_t = NTuple{sizeof(exr_chunk_info_t), UInt8}
+const _exr_quick_channel_store_t = NTuple{5 * sizeof(exr_coding_channel_info_t), UInt8}
+
+mutable struct _exr_encode_pipeline"""
+    occursin(original, text) ||
+        error("post-process patch failed: pipeline storage insertion point changed; \
+               regenerate this file with current Clang.jl and update the patch.")
+    text = replace(text, original => patched)
+    text = replace_exactly(
+        text,
+        "    chunk::exr_chunk_info_t",
+        "    chunk::_exr_chunk_info_storage_t",
+        2,
+        "pipeline chunk storage",
+    )
+    text = replace_exactly(
+        text,
+        "    _quick_chan_store::NTuple{5, exr_coding_channel_info_t}",
+        "    _quick_chan_store::_exr_quick_channel_store_t",
+        2,
+        "pipeline quick channel storage",
+    )
+    write(core_common_file, text)
+end
